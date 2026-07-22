@@ -1,0 +1,30 @@
+const swaggerJsdoc = require('swagger-jsdoc');
+
+const options = {
+  definition: {
+    openapi: '3.0.0',
+    info: {
+      title: 'Vendee API',
+      version: '1.0.0',
+      description: 'REST API for Vendee, a full-stack e-commerce platform',
+    },
+    servers: [
+      { url: 'http://localhost:3000/api', description: 'Local development' },
+    ],
+    components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+        },
+      },
+    },
+    security: [{ bearerAuth: [] }],
+  },
+  apis: ['./src/routes/*.js'],
+};
+
+const swaggerSpec = swaggerJsdoc(options);
+
+module.exports = swaggerSpec;

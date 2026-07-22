@@ -1,0 +1,279 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ProductVariantType {
+  color
+  size
+
+  @@map("product_variant_type")
+}
+
+enum OrderStatus {
+  pending
+  shipped
+  delivered
+  cancelled
+
+  @@map("order_status")
+}
+
+enum PaymentStatus {
+  pending
+  completed
+  failed
+  refunded
+
+  @@map("payment_status")
+}
+
+enum Role {
+  buyer
+  seller
+
+  @@map("role")
+}
+
+model User {
+  id            Int       @id @default(autoincrement())
+  avatar        String?
+  firstName     String?   @map("first_name")
+  lastName      String?   @map("last_name")
+  username      String    @unique
+  email         String    @unique
+  password      String?
+  role          Role
+  dateOfBirth   DateTime? @map("date_of_birth") @db.Date
+  phoneNumber   String?   @map("phone_number")
+  createdAt     DateTime? @default(now()) @map("created_at")
+  deletedAt     DateTime? @map("deleted_at")
+
+  addresses     Address[]
+  store         Store?
+  wishlist      Wishlist[]
+  cart          Cart?
+  orders        Order[]
+  reviews       Review[]
+
+  @@map("users")
+}
+
+model Address {
+  id            Int       @id @default(autoincrement())
+  userId        Int       @map("user_id")
+  title         String?
+  addressLine1  String?   @map("address_line_1")
+  addressLine2  String?   @map("address_line_2")
+  country       String?
+  city          String?
+  postalCode    String?   @map("postal_code")
+  landmark      String?
+  phoneNumber   String?   @map("phone_number")
+  createdAt     DateTime? @default(now()) @map("created_at")
+  deletedAt     DateTime? @map("deleted_at")
+
+  user          User      @relation(fields: [userId], references: [id])
+  orders        Order[]
+
+  @@map("addresses")
+}
+
+model Category {
+  id            Int       @id @default(autoincrement())
+  name          String    @unique
+  description   String?
+  createdAt     DateTime? @default(now()) @map("created_at")
+  deletedAt     DateTime? @map("deleted_at")
+
+  products      Product[]
+
+  @@map("categories")
+}
+
+model Product {
+  id            Int       @id @default(autoincrement())
+  storeId       Int       @map("store_id")
+  categoryId    Int?      @map("category_id")
+  name          String?
+  description   String?
+  cover         String?
+  createdAt     DateTime? @default(now()) @map("created_at")
+  deletedAt     DateTime? @map("deleted_at")
+
+  store         Store           @relation(fields: [storeId], references: [id])
+  category      Category?       @relation(fields: [categoryId], references: [id])
+  variants      ProductVariant[]
+  skus          ProductSku[]
+  wishlistedBy  Wishlist[]
+  cartItems     CartItem[]
+  orderItems    OrderItem[]
+  reviews       Review[]
+
+  @@map("products")
+}
+
+model ProductVariant {
+  id            Int                 @id @default(autoincrement())
+  productId     Int                 @map("product_id")
+  type          ProductVariantType?
+  value         String?
+  createdAt     DateTime?           @default(now()) @map("created_at")
+  deletedAt     DateTime?           @map("deleted_at")
+
+  product       Product        @relation(fields: [productId], references: [id])
+  skuVariants   SkuVariant[]
+
+  @@map("product_variants")
+}
+
+model ProductSku {
+  id            Int       @id @default(autoincrement())
+  productId     Int       @map("product_id")
+  sku           String?
+  price         Decimal?  @db.Decimal(10, 2)
+  quantity      Int?
+  createdAt     DateTime? @default(now()) @map("created_at")
+  deletedAt     DateTime? @map("deleted_at")
+
+  product       Product       @relation(fields: [productId], references: [id])
+  skuVariants   SkuVariant[]
+  cartItems     CartItem[]
+  orderItems    OrderItem[]
+
+  @@map("product_skus")
+}
+
+model SkuVariant {
+  id               Int @id @default(autoincrement())
+  productSkuId     Int @map("product_sku_id")
+  productVariantId Int @map("product_variant_id")
+
+  productSku       ProductSku     @relation(fields: [productSkuId], references: [id])
+  productVariant   ProductVariant @relation(fields: [productVariantId], references: [id])
+
+  @@map("sku_variants")
+}
+
+model Wishlist {
+  id            Int       @id @default(autoincrement())
+  userId        Int       @map("user_id")
+  productId     Int       @map("product_id")
+  createdAt     DateTime? @default(now()) @map("created_at")
+  deletedAt     DateTime? @map("deleted_at")
+
+  user          User      @relation(fields: [userId], references: [id])
+  product       Product   @relation(fields: [productId], references: [id])
+
+  @@unique([userId, productId])
+  @@map("wishlist")
+}
+
+model Cart {
+  id            Int       @id @default(autoincrement())
+  userId        Int       @unique @map("user_id")
+  createdAt     DateTime? @default(now()) @map("created_at")
+  updatedAt     DateTime? @updatedAt @map("updated_at")
+
+  user          User        @relation(fields: [userId], references: [id])
+  items         CartItem[]
+
+  @@map("carts")
+}
+
+model CartItem {
+  id            Int       @id @default(autoincrement())
+  cartId        Int       @map("cart_id")
+  productId     Int       @map("product_id")
+  productSkuId  Int       @map("product_sku_id")
+  quantity      Int?
+  createdAt     DateTime? @default(now()) @map("created_at")
+  updatedAt     DateTime? @updatedAt @map("updated_at")
+
+  cart          Cart       @relation(fields: [cartId], references: [id])
+  product       Product    @relation(fields: [productId], references: [id])
+  productSku    ProductSku @relation(fields: [productSkuId], references: [id])
+
+  @@map("cart_items")
+}
+
+model Store {
+  id            Int       @id @default(autoincrement())
+  sellerId      Int       @unique @map("seller_id")
+  name          String
+  description   String?
+  createdAt     DateTime? @default(now()) @map("created_at")
+  updatedAt     DateTime? @updatedAt @map("updated_at")
+
+  seller        User        @relation(fields: [sellerId], references: [id])
+  products      Product[]
+
+  @@map("stores")
+}
+
+model Order {
+  id            Int         @id @default(autoincrement())
+  buyerId       Int         @map("buyer_id")
+  addressId     Int         @map("address_id")
+  total         Decimal?    @db.Decimal(10, 2)
+  status        OrderStatus?
+  createdAt     DateTime?   @default(now()) @map("created_at")
+  updatedAt     DateTime?   @updatedAt @map("updated_at")
+
+  buyer         User            @relation(fields: [buyerId], references: [id])
+  address       Address         @relation(fields: [addressId], references: [id])
+  items         OrderItem[]
+  paymentDetail PaymentDetail?
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id               Int       @id @default(autoincrement())
+  orderId          Int       @map("order_id")
+  productId        Int       @map("product_id")
+  productSkuId     Int       @map("product_sku_id")
+  priceAtPurchase  Decimal   @map("price_at_purchase") @db.Decimal(10, 2)
+  quantity         Int?
+  createdAt        DateTime? @default(now()) @map("created_at")
+  updatedAt        DateTime? @updatedAt @map("updated_at")
+
+  order            Order      @relation(fields: [orderId], references: [id])
+  product          Product    @relation(fields: [productId], references: [id])
+  productSku       ProductSku @relation(fields: [productSkuId], references: [id])
+
+  @@map("order_items")
+}
+
+model PaymentDetail {
+  id            Int            @id @default(autoincrement())
+  orderId       Int            @unique @map("order_id")
+  amount        Decimal?       @db.Decimal(10, 2)
+  provider      String?
+  status        PaymentStatus?
+  createdAt     DateTime?      @default(now()) @map("created_at")
+  updatedAt     DateTime?      @updatedAt @map("updated_at")
+
+  order         Order @relation(fields: [orderId], references: [id])
+
+  @@map("payment_details")
+}
+
+model Review {
+  id            Int       @id @default(autoincrement())
+  productId     Int       @map("product_id")
+  userId        Int       @map("user_id")
+  rating        Int?
+  description   String?
+  createdAt     DateTime? @default(now()) @map("created_at")
+  updatedAt     DateTime? @updatedAt @map("updated_at")
+
+  product       Product @relation(fields: [productId], references: [id])
+  user          User    @relation(fields: [userId], references: [id])
+
+  @@map("reviews")
+}
