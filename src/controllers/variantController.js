@@ -41,7 +41,7 @@ async function createVariant(req, res, next) {
   }
 }
 
-async function createSku(req, res, next) {
+async function createSku(req, res) {
   try {
     const { productId } = req.params;
 
@@ -58,28 +58,49 @@ async function createSku(req, res, next) {
       return res.status(403).json({ error: 'You do not own this product' });
     }
 
-    const { sku, price, quantity } = req.body;
+    const { sku, price, quantity, variantIds } = req.body;
 
     if (!sku || !price || quantity === undefined) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    if(isNaN(price) || isNaN(quantity)){
-      return res.status(400).json({ error: 'Provide a valid number'});
+    if (isNaN(price) || isNaN(quantity)) {
+      return res.status(400).json({ error: 'Provide a valid number' });
     }
 
-    const productSku = await prisma.productSku.create({
-      data: {
-        productId: Number(productId),
-        sku,
-        price: Number(price),
-        quantity: Number(quantity),
+    if (variantIds && !Array.isArray(variantIds)) {
+      return res.status(400).json({ error: 'variantIds must be an array' });
+    }
+
+    const productSku = await prisma.$transaction(async (tx) => {
+      const newSku = await tx.productSku.create({
+        data: {
+          productId: Number(productId),
+          sku,
+          price: Number(price),
+          quantity: Number(quantity),
+        },
+      });
+
+      if (variantIds && variantIds.length > 0) {
+        await tx.skuVariant.createMany({
+          data: variantIds.map((variantId) => ({
+            productSkuId: newSku.id,
+            productVariantId: Number(variantId),
+          })),
+        });
       }
+
+      return tx.productSku.findUnique({
+        where: { id: newSku.id },
+        include: { skuVariants: { include: { productVariant: true } } },
+      });
     });
 
     res.status(201).json(productSku);
   } catch (error) {
-    next(error);
+    console.error(error);
+    res.status(500).json({ error: 'Something went wrong creating the sku' });
   }
 }
 
