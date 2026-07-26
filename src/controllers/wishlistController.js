@@ -6,7 +6,10 @@ async function getWishlist(req, res, next) {
       where: {
         userId: req.user.userId,
         deletedAt: null,
-      }
+      },
+      include: { 
+        product: { include: { skus: true } },
+      },
     });
 
     res.json(wishlists);
