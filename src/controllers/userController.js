@@ -5,6 +5,7 @@ async function getMe(req, res, next) {
   try {
     const user = await prisma.user.findUnique({
       where: { id: req.user.userId },
+      include: { store: true },
     });
 
     if (!user) {
