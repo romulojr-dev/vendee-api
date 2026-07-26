@@ -229,7 +229,9 @@ async function getStoreOrders(req, res, next) {
           },
         },
       },
-      include: { items: true },
+      include: {
+        items: { include: { product: true, productSku: true } },
+      },
     });
 
     res.json(orders);
